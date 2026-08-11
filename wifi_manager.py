@@ -8,6 +8,7 @@ raises. A class-based context manager is used instead of
 CircuitPython builds.
 """
 import gc
+import time
 
 import adafruit_ntp
 import adafruit_requests
@@ -16,6 +17,15 @@ import ssl
 import wifi
 
 _pool = None
+
+# Brief settle time after association, before the first socket/NTP call.
+# wifi.radio.connect() already blocks until DHCP completes, but a sibling
+# ESP8266 clock project (which this NTP_SERVERS list and retry pattern are
+# carried over from) found NTP requests sent immediately after connecting
+# would silently go unanswered -- the radio/stack needs a moment to settle
+# before it reliably passes traffic. Cheap to keep even though CircuitPython's
+# blocking connect() call makes it less likely to matter here.
+_CONNECT_SETTLE_S = 0.5
 
 
 def _get_pool():
@@ -30,6 +40,7 @@ def connect(cfg):
         return False
     try:
         wifi.radio.connect(cfg.wifi_ssid, cfg.wifi_password)
+        time.sleep(_CONNECT_SETTLE_S)
         return True
     except (ConnectionError, OSError) as e:
         print("wifi: connect failed:", e)
