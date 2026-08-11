@@ -1,0 +1,54 @@
+# WiFi
+WIFI_SSID = "your_ssid"
+WIFI_PASSWORD = "your_password"
+
+# Home Assistant
+HA_HOST = "http://homeassistant.local:8123"
+HA_TOKEN = "your_long_lived_access_token"
+HA_REPORT_INTERVAL = 300          # seconds between HA push reports
+HA_FETCH_INTERVAL = 300           # seconds between HA data pulls
+
+# Device identity (used in HA entity IDs and friendly names)
+DEVICE_NAME = "living_room_clock"
+
+# Timezone (POSIX string — handles DST automatically)
+# Eastern:  "EST5EDT,M3.2.0,M11.1.0"
+# Central:  "CST6CDT,M3.2.0,M11.1.0"
+# Mountain: "MST7MDT,M3.2.0,M11.1.0"
+# Pacific:  "PST8PDT,M3.2.0,M11.1.0"
+TIMEZONE = "EST5EDT,M3.2.0,M11.1.0"
+
+# NTP (comma-separated, tried in order; IPs preferred over hostnames)
+NTP_SERVERS = "216.239.35.0,216.239.35.4,129.6.15.28,pool.ntp.org"
+
+# Display modes — order and dwell time (seconds, except scroll)
+MODE_ORDER = "clock,clock_date,indoor,outdoor,scroll"
+MODE_DWELL_CLOCK = 30
+MODE_DWELL_CLOCK_DATE = 15
+MODE_DWELL_INDOOR = 10
+MODE_DWELL_OUTDOOR = 10
+MODE_DWELL_SCROLL = 2             # number of complete scroll passes
+
+# Colors (RGB hex strings)
+COLOR_TIME = "0xFFAA00"           # warm amber
+COLOR_DATE = "0x004488"           # muted blue
+COLOR_TEMP = "0xFF4400"           # warm orange
+COLOR_HUMIDITY = "0x0088FF"       # cool blue
+COLOR_OUTDOOR = "0x00FF88"        # green
+COLOR_SCROLL = "0xFFFFFF"         # white
+
+# Adaptive brightness thresholds (lux)
+BRIGHTNESS_HIGH_LUX = 200
+BRIGHTNESS_LOW_LUX = 10
+
+# Brightness levels (0.0 – 1.0)
+BRIGHTNESS_MAX = 1.0
+BRIGHTNESS_MID = 0.4
+BRIGHTNESS_MIN = 0.05
+
+# Home Assistant entity IDs to pull outdoor data from
+HA_OUTDOOR_TEMP_ENTITY = "sensor.outdoor_temperature"
+HA_OUTDOOR_CONDITIONS_ENTITY = "sensor.outdoor_conditions"
+
+# Scroll message (static only in this pass — see CLAUDE.md / requirements doc)
+SCROLL_MESSAGE = "Welcome!"

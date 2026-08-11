@@ -1,0 +1,165 @@
+"""Matrix Portal RGB Clock -- orchestrator.
+
+No I/O logic of its own: this just sequences the boot check and drives the
+main loop, delegating every actual operation to the other modules.
+"""
+import time
+
+import board
+
+import brightness
+import config
+import display_modes
+import ha_client
+import rtc_manager
+import sensors
+import tz
+import wifi_manager
+
+NTP_RESYNC_INTERVAL = 24 * 60 * 60  # once a day, per the spec
+SENSOR_SAMPLE_INTERVAL = 1.0  # BH1750/AHT20 sampled on their own ~1s timer,
+# decoupled from the main loop's tick rate so fast scroll-animation ticks
+# (~0.05s) don't bottleneck on sensor conversion delay.
+BOOT_RETRY_INTERVAL = 60
+
+
+def _iso(utc_struct_time):
+    return "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}Z".format(
+        utc_struct_time.tm_year,
+        utc_struct_time.tm_mon,
+        utc_struct_time.tm_mday,
+        utc_struct_time.tm_hour,
+        utc_struct_time.tm_min,
+        utc_struct_time.tm_sec,
+    )
+
+
+def _has_outdoor_data(outdoor_cache):
+    return bool(outdoor_cache) and (
+        outdoor_cache.get("temperature") is not None
+        or outdoor_cache.get("conditions") is not None
+    )
+
+
+def _boot(cfg, renderer, rtc_mgr):
+    """Covers both the "WiFi unavailable on boot" and "DS3231 invalid + no
+    WiFi" degradation-table rows, which specify identical behavior: show
+    "----" and retry every 60s until the RTC is valid. Returns the synced UTC
+    time.struct_time if a boot-time NTP sync happened, else None (RTC was
+    already valid, so no sync was needed) -- the caller uses this to seed
+    last_ntp_sync_iso for the HA report."""
+    if rtc_mgr.is_valid:
+        print("code: RTC valid, starting immediately (no WiFi)")
+        return None
+
+    print("code: RTC invalid or lost power, need NTP before starting")
+    while not rtc_mgr.is_valid:
+        renderer.show_placeholder("----")
+        if cfg.wifi_configured:
+            with wifi_manager.session(cfg) as sess:
+                if sess.connected:
+                    utc = wifi_manager.ntp_sync(cfg)
+                    if utc is not None:
+                        rtc_mgr.write_utc(utc)
+                        print("code: NTP sync ok, RTC updated")
+                        return utc
+                    print("code: NTP sync failed, retrying in", BOOT_RETRY_INTERVAL, "s")
+                else:
+                    print("code: WiFi connect failed, retrying in", BOOT_RETRY_INTERVAL, "s")
+        time.sleep(BOOT_RETRY_INTERVAL)
+
+
+def main():
+    cfg = config.load()
+    if not cfg.wifi_configured:
+        print("code: WiFi not configured -- running clock-only, offline")
+    if not cfg.ha_configured:
+        print("code: Home Assistant not configured -- HA modes disabled")
+
+    i2c = board.I2C()
+    display = display_modes.init_display()
+    renderer = display_modes.Renderer(display, cfg)
+    rtc_mgr = rtc_manager.RTCManager(i2c)
+    sensor_hub = sensors.SensorHub(i2c)
+    tz_instance = tz.PosixTZ(cfg.timezone)
+
+    boot_sync_utc = _boot(cfg, renderer, rtc_mgr)
+
+    mode_mgr = display_modes.ModeManager(cfg)
+    current_brightness = cfg.brightness_mid
+    current_lux = None
+    current_indoor = None
+    last_sensor_sample = -SENSOR_SAMPLE_INTERVAL
+    last_ntp_sync = time.monotonic()
+    last_ntp_sync_iso = _iso(boot_sync_utc) if boot_sync_utc is not None else None
+    last_ha_fetch = -cfg.ha_fetch_interval
+    last_ha_report = -cfg.ha_report_interval
+    outdoor_cache = None
+
+    while True:
+        try:
+            now = time.monotonic()
+
+            utc = rtc_mgr.read_utc()
+            local_time, _tz_abbr = tz_instance.to_local(utc)
+
+            if now - last_sensor_sample >= SENSOR_SAMPLE_INTERVAL:
+                last_sensor_sample = now
+                lux = sensor_hub.read_lux()
+                if lux is not None:
+                    current_lux = lux
+                current_indoor = sensor_hub.read_indoor()
+
+            if current_lux is not None:
+                target = brightness.target_level(current_lux, cfg)
+                current_brightness = brightness.smooth(current_brightness, target)
+                display.brightness = current_brightness
+
+            mode_mgr.update_availability(
+                indoor_available=current_indoor is not None,
+                outdoor_available=_has_outdoor_data(outdoor_cache),
+            )
+            mode_mgr.tick(now)
+            mode = mode_mgr.current_mode()
+            renderer.render(mode, local_time, current_indoor, outdoor_cache)
+            if mode == "scroll" and renderer.tick_scroll():
+                mode_mgr.note_scroll_pass()
+
+            if cfg.wifi_configured and now - last_ntp_sync >= NTP_RESYNC_INTERVAL:
+                last_ntp_sync = now
+                with wifi_manager.session(cfg) as sess:
+                    if sess.connected:
+                        synced = wifi_manager.ntp_sync(cfg)
+                        if synced is not None:
+                            rtc_mgr.write_utc(synced)
+                            last_ntp_sync_iso = _iso(synced)
+                        else:
+                            print("code: daily NTP resync failed, retrying next interval")
+
+            if cfg.ha_configured and now - last_ha_fetch >= cfg.ha_fetch_interval:
+                last_ha_fetch = now
+                with wifi_manager.session(cfg) as sess:
+                    if sess.connected:
+                        outdoor_cache = ha_client.fetch_outdoor(sess.requests, cfg)
+
+            if cfg.ha_configured and now - last_ha_report >= cfg.ha_report_interval:
+                last_ha_report = now
+                with wifi_manager.session(cfg) as sess:
+                    if sess.connected:
+                        ha_client.report_all(
+                            sess.requests,
+                            cfg,
+                            rtc_mgr.read_chip_temperature(),
+                            current_lux,
+                            last_ntp_sync_iso,
+                            sess.rssi(),
+                            mode,
+                        )
+
+        except Exception as e:  # noqa: BLE001 -- a transient fault must never blank the panel
+            print("code: main loop error:", e)
+
+        time.sleep(mode_mgr.tick_interval())
+
+
+main()
