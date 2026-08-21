@@ -1,0 +1,3 @@
+# Contains WiFi and Home Assistant credentials -- never commit.
+# Copy settings.toml.example to settings.toml and fill in real values.
+settings.toml

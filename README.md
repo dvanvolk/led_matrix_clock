@@ -72,10 +72,12 @@ matching your CircuitPython version and copy these into a `lib/` folder on
 
 ### 3. Configure `settings.toml`
 
-Edit the `settings.toml` in this repo directly — it's read by CircuitPython
-at boot via `os.getenv`, so no separate secrets file is needed. At minimum,
-set `WIFI_SSID` / `WIFI_PASSWORD`, `HA_HOST` / `HA_TOKEN` (a long-lived
-access token from your HA profile), `DEVICE_NAME`, and `TIMEZONE`:
+Copy `settings.toml.example` to `settings.toml` and fill in real values —
+`settings.toml` is gitignored so your credentials never get committed;
+`settings.toml.example` stays in the repo as the placeholder template. It's
+read by CircuitPython at boot via `os.getenv`. At minimum, set `WIFI_SSID` /
+`WIFI_PASSWORD`, `HA_HOST` / `HA_TOKEN` (a long-lived access token from your
+HA profile), `DEVICE_NAME`, and `TIMEZONE`:
 
 ```toml
 # Eastern:  "EST5EDT,M3.2.0,M11.1.0"
@@ -85,10 +87,9 @@ access token from your HA profile), `DEVICE_NAME`, and `TIMEZONE`:
 TIMEZONE = "EST5EDT,M3.2.0,M11.1.0"
 ```
 
-`settings.toml` holds real credentials once filled in — don't commit it with
-production values. Leaving `WIFI_SSID` or `HA_HOST`/`HA_TOKEN` blank disables
-that subsystem permanently (logged once at boot) rather than retrying forever,
-so a clock-only, fully offline deployment is a supported configuration.
+Leaving `WIFI_SSID` or `HA_HOST`/`HA_TOKEN` blank disables that subsystem
+permanently (logged once at boot) rather than retrying forever, so a
+clock-only, fully offline deployment is a supported configuration.
 
 Every other tunable (mode order/dwell times, colors, brightness thresholds,
 report intervals) lives in the same file — see the file's comments or the

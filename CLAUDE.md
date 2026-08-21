@@ -26,6 +26,8 @@ There is no compiler and no package/build step. CircuitPython executes `code.py`
 
 Secrets and all tunable configuration live in `settings.toml` at the project root (see schema in the requirements doc) and are read via CircuitPython's `os.getenv`. **Never hardcode WiFi credentials, HA tokens, or tunables in source — they belong in `settings.toml`.**
 
+`settings.toml` is gitignored (it holds real WiFi/HA credentials once filled in) and must never be committed. `settings.toml.example` is the checked-in placeholder template — keep it in sync whenever the schema changes (new keys, renamed keys), but never fill it with real values.
+
 ## Core architectural rules from the spec
 
 These are easy to get subtly wrong by "helpfully" simplifying, so they're called out explicitly:
