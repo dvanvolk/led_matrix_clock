@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This repository currently contains only `matrix_clock_requirements.md` — no source code has been written yet. That file is the spec of record; read it in full before implementing anything, since it defines behavior that would otherwise require guessing (exact failure-mode handling, HA entity naming, brightness curve, etc). Update it if requirements change during implementation so it stays authoritative.
+The implementation is written: `code.py` (orchestrator) plus `config.py`, `tz.py`, `rtc_manager.py`, `sensors.py`, `brightness.py`, `display_modes.py`, `wifi_manager.py`, and `ha_client.py`, along with `settings.toml`. `matrix_clock_requirements.md` remains the spec of record — read it in full before changing behavior, since it defines things that would otherwise require guessing (exact failure-mode handling, HA entity naming, brightness curve, etc). Keep it authoritative: update it if requirements change during further work, and check new code against it rather than re-deriving behavior from scratch. `README.md` documents known deviations from the spec (e.g. clock-mode text size) — check there too before "fixing" something that's actually a deliberate, documented tradeoff.
 
 ## What this project is
 
