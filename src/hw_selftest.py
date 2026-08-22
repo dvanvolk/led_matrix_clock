@@ -26,6 +26,7 @@ import display_modes
 import rtc_manager
 import sensors
 import wifi_manager
+from log import log
 
 PASS = "PASS"
 FAIL = "FAIL"
@@ -45,7 +46,7 @@ _results = []
 
 def record(name, status, detail):
     _results.append((name, status, detail))
-    print("[{}] {} - {}".format(status, name, detail))
+    log("[{}] {} - {}".format(status, name, detail))
 
 
 def _run_test(name, fn, *args):
@@ -78,11 +79,10 @@ def _test_i2c_scan(i2c):
 def _test_rtc(i2c):
     rtc_mgr = rtc_manager.RTCManager(i2c)
     if not rtc_mgr.is_valid:
-        try:
-            rtc_mgr.read_utc()
-            record("rtc", FAIL, "DS3231 present but invalid (lost power or year < 2020)")
-        except OSError:
+        if rtc_mgr.read_utc() is None:
             record("rtc", FAIL, "DS3231 not found on the bus")
+        else:
+            record("rtc", FAIL, "DS3231 present but invalid (lost power or year < 2020)")
         return
     utc = rtc_mgr.read_utc()
     chip_temp = rtc_mgr.read_chip_temperature()
@@ -158,7 +158,7 @@ def _test_matrix():
     display.brightness = 1.0
 
     for name, color in _MATRIX_COLORS:
-        print("hw_selftest: matrix showing {}".format(name))
+        log("hw_selftest: matrix showing {}".format(name))
         display.root_group = _solid_group(color)
         time.sleep(_MATRIX_COLOR_HOLD_S)
 
@@ -171,17 +171,17 @@ def _test_matrix():
 
 def print_summary():
     counts = {PASS: 0, FAIL: 0, SKIP: 0}
-    print("\n---- hw_selftest summary ----")
+    log("\n---- hw_selftest summary ----")
     for name, status, detail in _results:
-        print("{:<6} {:<14} {}".format(status, name, detail))
+        log("{:<6} {:<14} {}".format(status, name, detail))
         counts[status] += 1
-    print(
+    log(
         "Result: {} PASS, {} FAIL, {} SKIP".format(counts[PASS], counts[FAIL], counts[SKIP])
     )
 
 
 def run():
-    print("hw_selftest: ==== starting hardware self-test ====")
+    log("hw_selftest: ==== starting hardware self-test ====")
     i2c = board.I2C()
     cfg = config.load()
 

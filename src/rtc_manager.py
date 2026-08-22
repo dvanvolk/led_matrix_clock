@@ -7,16 +7,24 @@ and it drifts on the board's own oscillator between assignments.
 """
 import adafruit_ds3231
 
+from log import log
+
 _MIN_VALID_YEAR = 2020
 
 
 class RTCManager:
     def __init__(self, i2c):
+        self.io_error = False
         try:
             self._ds3231 = adafruit_ds3231.DS3231(i2c)
         except (OSError, ValueError) as e:
-            print("rtc_manager: DS3231 not found, running without RTC:", e)
+            log("rtc_manager: DS3231 not found, running without RTC:", e)
             self._ds3231 = None
+
+    def rebind(self, i2c):
+        """Re-probes the DS3231 against a freshly recovered I2C bus (see
+        i2c_recovery.recover) -- reruns the same probe as __init__."""
+        self.__init__(i2c)
 
     @property
     def is_valid(self):
@@ -33,10 +41,21 @@ class RTCManager:
             return False
 
     def read_utc(self):
-        """Returns the current UTC time as a time.struct_time."""
+        """Returns the current UTC time as a time.struct_time, or None if the
+        DS3231 is missing or an I2C read glitches -- callers should hold the
+        last known time rather than let this take down the main loop."""
         if self._ds3231 is None:
-            raise OSError("DS3231 not present")
-        return self._ds3231.datetime
+            self.io_error = False
+            return None
+        try:
+            utc = self._ds3231.datetime
+            self.io_error = False
+            return utc
+        except OSError as e:
+            if not self.io_error:
+                log("rtc_manager: DS3231 read failed:", e)
+            self.io_error = True
+            return None
 
     def write_utc(self, utc_struct_time):
         """Writes a UTC time.struct_time to the RTC (e.g. after an NTP sync).

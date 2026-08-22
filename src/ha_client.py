@@ -6,6 +6,7 @@ Entity IDs for pushed data are sensor.{device_name_slug}_{suffix} (DEVICE_NAME
 slugified to a valid HA object_id); HA creates them on first POST, no YAML
 needed.
 """
+from log import log
 
 
 def get_state(requests_session, cfg, entity_id):
@@ -14,14 +15,14 @@ def get_state(requests_session, cfg, entity_id):
     try:
         response = requests_session.get(url, headers=headers)
     except OSError as e:
-        print("ha_client: GET {} failed: {}".format(entity_id, e))
+        log("ha_client: GET {} failed: {}".format(entity_id, e))
         return None
     try:
         if response.status_code != 200:
             return None
         return response.json().get("state")
     except (ValueError, AttributeError) as e:
-        print("ha_client: GET {} bad response: {}".format(entity_id, e))
+        log("ha_client: GET {} bad response: {}".format(entity_id, e))
         return None
     finally:
         response.close()
@@ -48,11 +49,11 @@ def post_state(requests_session, cfg, entity_suffix, state, friendly_suffix=None
     try:
         response = requests_session.post(url, headers=headers, json=payload)
     except OSError as e:
-        print("ha_client: POST {} failed: {}".format(entity_id, e))
+        log("ha_client: POST {} failed: {}".format(entity_id, e))
         return False
     try:
         if response.status_code not in (200, 201):
-            print(
+            log(
                 "ha_client: POST {} failed: HTTP {} {}".format(
                     entity_id, response.status_code, response.text
                 )

@@ -26,6 +26,8 @@ import adafruit_ntp
 import adafruit_requests
 from adafruit_esp32spi import adafruit_esp32spi
 
+from log import log
+
 _esp = None
 _pool = None
 _ssl_context = None
@@ -68,17 +70,17 @@ def connect(cfg):
     try:
         esp.connect_AP(cfg.wifi_ssid, cfg.wifi_password)
         time.sleep(_CONNECT_SETTLE_S)
-        print("wifi: connected to {}, ip={}".format(cfg.wifi_ssid, esp.pretty_ip(esp.ip_address)))
+        log("wifi: connected to {}, ip={}".format(cfg.wifi_ssid, esp.pretty_ip(esp.ip_address)))
         return True
     except (ConnectionError, OSError, RuntimeError) as e:
-        print("wifi: connect failed:", e)
+        log("wifi: connect failed:", e)
         return False
 
 
 def disconnect():
     try:
         _get_esp().disconnect()
-        print("wifi: disconnected")
+        log("wifi: disconnected")
     except (OSError, RuntimeError):
         pass
     gc.collect()
@@ -125,8 +127,8 @@ def ntp_sync(cfg):
         try:
             ntp = adafruit_ntp.NTP(pool, server=host, tz_offset=0)
             datetime = ntp.datetime
-            print("wifi: NTP sync ok from {}".format(host))
+            log("wifi: NTP sync ok from {}".format(host))
             return datetime
         except (OSError, ValueError) as e:
-            print("wifi: NTP server {} failed: {}".format(host, e))
+            log("wifi: NTP server {} failed: {}".format(host, e))
     return None

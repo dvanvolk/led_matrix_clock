@@ -21,6 +21,8 @@ import terminalio
 from adafruit_display_text.label import Label
 from adafruit_matrixportal.matrix import Matrix
 
+from log import log
+
 WIDTH = 64
 HEIGHT = 32
 
@@ -81,7 +83,7 @@ class ModeManager:
     def _advance(self, now):
         self._index = (self._index + 1) % len(self._modes)
         self._mode_start = now
-        print("display_modes: switched to mode:", self.current_mode())
+        log("display_modes: switched to mode:", self.current_mode())
 
 
 class BottomRotator:
@@ -136,12 +138,28 @@ class BottomRotator:
         self._item_start = now
 
 
+def _scale_color(color, factor):
+    """Scales a 24-bit RGB color by `factor` (0.0-1.0). This is how brightness
+    is actually applied -- the HUB75 framebuffer (rgbmatrix/framebufferio)
+    doesn't implement hardware brightness control, so display.brightness is a
+    silent no-op on this panel. Scaling the color values themselves works on
+    any displayio target."""
+    if factor >= 1.0:
+        return color
+    r = int(((color >> 16) & 0xFF) * factor)
+    g = int(((color >> 8) & 0xFF) * factor)
+    b = int((color & 0xFF) * factor)
+    return (r << 16) | (g << 8) | b
+
+
 class Renderer:
     def __init__(self, display, cfg):
         self._display = display
         self._cfg = cfg
         self._active_mode = None
         self._active_bottom_item = None
+        self._brightness = 1.0
+        self._bottom_base_color = cfg.color_date
 
         # Time: always shown, top half of the panel. See module docstring
         # re: scale=2 (not the spec's literal 32px) being the largest that
@@ -181,6 +199,17 @@ class Renderer:
             self._display.root_group = self.placeholder_group
             self._active_mode = "__placeholder__"
 
+    def set_brightness(self, brightness):
+        """Applies the smoothed brightness level from brightness.py by
+        rescaling label colors -- see _scale_color for why this is the real
+        dimming mechanism rather than display.brightness."""
+        if brightness == self._brightness:
+            return
+        self._brightness = brightness
+        self.time_label.color = _scale_color(self._cfg.color_time, brightness)
+        self.placeholder_label.color = _scale_color(self._cfg.color_time, brightness)
+        self.bottom_label.color = _scale_color(self._bottom_base_color, brightness)
+
     def _configure_bottom_label(self, item):
         # All three items share the date's 8px size and centered position --
         # 16px (scale=2) was tall enough to visually overlap the time label
@@ -189,11 +218,12 @@ class Renderer:
         self.bottom_label.anchor_point = (0.5, 1.0)
         self.bottom_label.anchored_position = (WIDTH // 2, HEIGHT)
         if item == "date":
-            self.bottom_label.color = self._cfg.color_date
+            self._bottom_base_color = self._cfg.color_date
         elif item == "indoor":
-            self.bottom_label.color = self._cfg.color_temp
+            self._bottom_base_color = self._cfg.color_temp
         elif item == "outdoor":
-            self.bottom_label.color = self._cfg.color_outdoor
+            self._bottom_base_color = self._cfg.color_outdoor
+        self.bottom_label.color = _scale_color(self._bottom_base_color, self._brightness)
 
     def render(self, mode, bottom_item, local_time, indoor, outdoor):
         if self._active_mode != mode:

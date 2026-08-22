@@ -11,16 +11,19 @@ import brightness
 import config
 import display_modes
 import ha_client
+import i2c_recovery
 import rtc_manager
 import sensors
 import tz
 import wifi_manager
+from log import log
 
 NTP_RESYNC_INTERVAL = 24 * 60 * 60  # once a day, per the spec
 SENSOR_SAMPLE_INTERVAL = 1.0  # BH1750/AHT20 sampled on their own ~1s timer,
 # decoupled from the main loop's tick rate.
 BOOT_RETRY_INTERVAL = 60
 MAIN_LOOP_INTERVAL = 0.5
+I2C_RECOVERY_COOLDOWN = 5.0  # don't re-attempt bus recovery more than this often
 
 
 def _iso(utc_struct_time):
@@ -49,10 +52,10 @@ def _boot(cfg, renderer, rtc_mgr):
     already valid, so no sync was needed) -- the caller uses this to seed
     last_ntp_sync_iso for the HA report."""
     if rtc_mgr.is_valid:
-        print("code: RTC valid, starting immediately (no WiFi)")
+        log("code: RTC valid, starting immediately (no WiFi)")
         return None
 
-    print("code: RTC invalid or lost power, need NTP before starting")
+    log("code: RTC invalid or lost power, need NTP before starting")
     while not rtc_mgr.is_valid:
         renderer.show_placeholder("----")
         if cfg.wifi_configured:
@@ -61,25 +64,25 @@ def _boot(cfg, renderer, rtc_mgr):
                     utc = wifi_manager.ntp_sync(cfg)
                     if utc is not None:
                         rtc_mgr.write_utc(utc)
-                        print("code: NTP sync ok, RTC updated")
+                        log("code: NTP sync ok, RTC updated")
                         return utc
-                    print("code: NTP sync failed, retrying in", BOOT_RETRY_INTERVAL, "s")
+                    log("code: NTP sync failed, retrying in", BOOT_RETRY_INTERVAL, "s")
                 else:
-                    print("code: WiFi connect failed, retrying in", BOOT_RETRY_INTERVAL, "s")
+                    log("code: WiFi connect failed, retrying in", BOOT_RETRY_INTERVAL, "s")
         time.sleep(BOOT_RETRY_INTERVAL)
 
 
 def main():
-    print("code: ==== Matrix Clock starting ====")
+    log("code: ==== Matrix Clock starting ====")
     cfg = config.load()
-    print("code: device_name={} wifi_configured={} ha_configured={} timezone={}".format(
+    log("code: device_name={} wifi_configured={} ha_configured={} timezone={}".format(
         cfg.device_name, cfg.wifi_configured, cfg.ha_configured, cfg.timezone
     ))
-    print("code: mode_order=", cfg.mode_order)
+    log("code: mode_order=", cfg.mode_order)
     if not cfg.wifi_configured:
-        print("code: WiFi not configured -- running clock-only, offline")
+        log("code: WiFi not configured -- running clock-only, offline")
     if not cfg.ha_configured:
-        print("code: Home Assistant not configured -- HA modes disabled")
+        log("code: Home Assistant not configured -- HA modes disabled")
 
     i2c = board.I2C()
     display = display_modes.init_display()
@@ -87,7 +90,7 @@ def main():
     rtc_mgr = rtc_manager.RTCManager(i2c)
     sensor_hub = sensors.SensorHub(i2c)
     tz_instance = tz.PosixTZ(cfg.timezone)
-    print("code: display/RTC/sensors/timezone initialized")
+    log("code: display/RTC/sensors/timezone initialized")
 
     boot_sync_utc = _boot(cfg, renderer, rtc_mgr)
 
@@ -102,14 +105,23 @@ def main():
     last_ha_fetch = -cfg.ha_fetch_interval
     last_ha_report = -cfg.ha_report_interval
     outdoor_cache = None
+    last_utc = boot_sync_utc
+    last_i2c_recovery = -I2C_RECOVERY_COOLDOWN
 
-    print("code: entering main loop")
+    log("code: entering main loop")
     while True:
         try:
             now = time.monotonic()
 
             utc = rtc_mgr.read_utc()
-            local_time, _tz_abbr = tz_instance.to_local(utc)
+            if utc is not None:
+                last_utc = utc
+            if last_utc is None:
+                # Only possible if the very first read after boot glitches --
+                # nothing to hold yet, so wait for a good read.
+                time.sleep(MAIN_LOOP_INTERVAL)
+                continue
+            local_time, _tz_abbr = tz_instance.to_local(last_utc)
 
             if now - last_sensor_sample >= SENSOR_SAMPLE_INTERVAL:
                 last_sensor_sample = now
@@ -118,10 +130,20 @@ def main():
                     current_lux = lux
                 current_indoor = sensor_hub.read_indoor()
 
+            if (
+                (rtc_mgr.io_error or sensor_hub.io_error)
+                and now - last_i2c_recovery >= I2C_RECOVERY_COOLDOWN
+            ):
+                last_i2c_recovery = now
+                log("code: I2C error detected, recovering bus")
+                i2c = i2c_recovery.recover(i2c)
+                rtc_mgr.rebind(i2c)
+                sensor_hub.rebind(i2c)
+
             if current_lux is not None:
                 target = brightness.target_level(current_lux, cfg)
                 current_brightness = brightness.smooth(current_brightness, target)
-                display.brightness = current_brightness
+                renderer.set_brightness(current_brightness)
 
             bottom_mgr.update_availability(
                 indoor_available=current_indoor is not None,
@@ -141,20 +163,20 @@ def main():
                         if synced is not None:
                             rtc_mgr.write_utc(synced)
                             last_ntp_sync_iso = _iso(synced)
-                            print("code: daily NTP resync ok, RTC updated")
+                            log("code: daily NTP resync ok, RTC updated")
                         else:
-                            print("code: daily NTP resync failed, retrying next interval")
+                            log("code: daily NTP resync failed, retrying next interval")
                     else:
-                        print("code: daily NTP resync skipped, WiFi connect failed")
+                        log("code: daily NTP resync skipped, WiFi connect failed")
 
             if cfg.ha_configured and now - last_ha_fetch >= cfg.ha_fetch_interval:
                 last_ha_fetch = now
                 with wifi_manager.session(cfg) as sess:
                     if sess.connected:
                         outdoor_cache = ha_client.fetch_outdoor(sess.requests, cfg)
-                        print("code: HA outdoor fetch done:", outdoor_cache)
+                        log("code: HA outdoor fetch done:", outdoor_cache)
                     else:
-                        print("code: HA outdoor fetch skipped, WiFi connect failed")
+                        log("code: HA outdoor fetch skipped, WiFi connect failed")
 
             if cfg.ha_configured and now - last_ha_report >= cfg.ha_report_interval:
                 last_ha_report = now
@@ -169,14 +191,14 @@ def main():
                             sess.rssi(),
                             bottom_item,
                         )
-                        print("code: HA status report sent ({}/{} ok)".format(
+                        log("code: HA status report sent ({}/{} ok)".format(
                             succeeded, attempted
                         ))
                     else:
-                        print("code: HA status report skipped, WiFi connect failed")
+                        log("code: HA status report skipped, WiFi connect failed")
 
         except Exception as e:  # noqa: BLE001 -- a transient fault must never blank the panel
-            print("code: main loop error:", e)
+            log("code: main loop error:", e)
 
         time.sleep(MAIN_LOOP_INTERVAL)
 
