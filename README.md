@@ -72,9 +72,9 @@ matching your CircuitPython version and copy these into a `lib/` folder on
 
 ### 3. Configure `settings.toml`
 
-Copy `settings.toml.example` to `settings.toml` and fill in real values —
-`settings.toml` is gitignored so your credentials never get committed;
-`settings.toml.example` stays in the repo as the placeholder template. It's
+Copy `settings.toml.example` to `src/settings.toml` and fill in real values —
+`src/settings.toml` is gitignored so your credentials never get committed;
+`settings.toml.example` stays in the repo root as the placeholder template. It's
 read by CircuitPython at boot via `os.getenv`. At minimum, set `WIFI_SSID` /
 `WIFI_PASSWORD`, `HA_HOST` / `HA_TOKEN` (a long-lived access token from your
 HA profile), `DEVICE_NAME`, and `TIMEZONE`:
@@ -97,11 +97,12 @@ requirements doc for the full schema.
 
 ### 4. Deploy
 
-Copy `code.py` and every `.py` module in this repo (`config.py`, `tz.py`,
-`rtc_manager.py`, `sensors.py`, `brightness.py`, `display_modes.py`,
-`wifi_manager.py`, `ha_client.py`) plus `settings.toml` and `lib/` onto the
-`CIRCUITPY` drive. The board auto-reloads on save. Watch the serial console
-(e.g. `screen`, Mu, or `tio`) for boot and runtime log output.
+Run `.\deploy.ps1` to copy `code.py` and every `.py` module in `src/`
+(`config.py`, `tz.py`, `rtc_manager.py`, `sensors.py`, `brightness.py`,
+`display_modes.py`, `wifi_manager.py`, `ha_client.py`) plus `src/settings.toml`
+onto the `CIRCUITPY` drive (add `-InstallLibs` to also vendor `lib/` via
+circup). The board auto-reloads on save. Watch the serial console (e.g.
+`screen`, Mu, or `tio`) for boot and runtime log output.
 
 ## NTP notes
 

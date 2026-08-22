@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-The implementation is written: `code.py` (orchestrator) plus `config.py`, `tz.py`, `rtc_manager.py`, `sensors.py`, `brightness.py`, `display_modes.py`, `wifi_manager.py`, and `ha_client.py`, along with `settings.toml`. `matrix_clock_requirements.md` remains the spec of record — read it in full before changing behavior, since it defines things that would otherwise require guessing (exact failure-mode handling, HA entity naming, brightness curve, etc). Keep it authoritative: update it if requirements change during further work, and check new code against it rather than re-deriving behavior from scratch. `README.md` documents known deviations from the spec (e.g. clock-mode text size) — check there too before "fixing" something that's actually a deliberate, documented tradeoff.
+The implementation is written and lives under `src/`: `code.py` (orchestrator) plus `config.py`, `tz.py`, `rtc_manager.py`, `sensors.py`, `brightness.py`, `display_modes.py`, `wifi_manager.py`, and `ha_client.py`, along with `settings.toml`. `src/matrix_clock_requirements.md` remains the spec of record — read it in full before changing behavior, since it defines things that would otherwise require guessing (exact failure-mode handling, HA entity naming, brightness curve, etc). Keep it authoritative: update it if requirements change during further work, and check new code against it rather than re-deriving behavior from scratch. `README.md` documents known deviations from the spec (e.g. clock-mode text size) — check there too before "fixing" something that's actually a deliberate, documented tradeoff.
 
 ## What this project is
 
@@ -24,9 +24,9 @@ Libraries: `adafruit_matrixportal`, `adafruit_ds3231`, `adafruit_ahtx0`, `adafru
 
 There is no compiler and no package/build step. CircuitPython executes `code.py` (or `main.py`) directly off the board's `CIRCUITPY` USB mass-storage drive — deploying is copying files to that drive, and the board auto-reloads on save. There is no unit test framework in this ecosystem; validation is done on-device (serial console for logs/errors). When adding library dependencies, they get vendored into a `lib/` folder on the CIRCUITPY drive (from the Adafruit CircuitPython bundle), not installed via pip.
 
-Secrets and all tunable configuration live in `settings.toml` at the project root (see schema in the requirements doc) and are read via CircuitPython's `os.getenv`. **Never hardcode WiFi credentials, HA tokens, or tunables in source — they belong in `settings.toml`.**
+Secrets and all tunable configuration live in `src/settings.toml` (see schema in the requirements doc) and are read via CircuitPython's `os.getenv`. **Never hardcode WiFi credentials, HA tokens, or tunables in source — they belong in `settings.toml`.**
 
-`settings.toml` is gitignored (it holds real WiFi/HA credentials once filled in) and must never be committed. `settings.toml.example` is the checked-in placeholder template — keep it in sync whenever the schema changes (new keys, renamed keys), but never fill it with real values.
+`src/settings.toml` is gitignored (it holds real WiFi/HA credentials once filled in) and must never be committed. `settings.toml.example` (repo root) is the checked-in placeholder template — keep it in sync whenever the schema changes (new keys, renamed keys), but never fill it with real values.
 
 ## Core architectural rules from the spec
 

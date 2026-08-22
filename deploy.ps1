@@ -4,8 +4,8 @@
 
 .DESCRIPTION
     Finds the CIRCUITPY volume, copies code.py + every project module +
-    settings.toml onto it, and (optionally) runs circup to install/update
-    the required libraries into lib/ on the device.
+    settings.toml from src/ onto it, and (optionally) runs circup to
+    install/update the required libraries into lib/ on the device.
 
 .PARAMETER InstallLibs
     Also run `circup install` for the libraries this project needs.
@@ -21,6 +21,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+$SrcDir = Join-Path $PSScriptRoot "src"
 
 $ProjectFiles = @(
     "code.py",
@@ -53,16 +55,16 @@ if (-not $vol) {
 $drive = "$($vol.DriveLetter):"
 Write-Output "Found CIRCUITPY at $drive"
 
-$settingsPath = Join-Path $PSScriptRoot "settings.toml"
+$settingsPath = Join-Path $SrcDir "settings.toml"
 $settingsContent = Get-Content $settingsPath -Raw
 if ($settingsContent -match 'your_ssid' -or $settingsContent -match 'your_password' -or $settingsContent -match 'your_long_lived_access_token') {
     Write-Warning "settings.toml still has placeholder WIFI_SSID/WIFI_PASSWORD/HA_TOKEN values. Edit settings.toml before deploying, or the clock will try to associate to a literal network named 'your_ssid'."
 }
 
 foreach ($f in $ProjectFiles) {
-    $src = Join-Path $PSScriptRoot $f
+    $src = Join-Path $SrcDir $f
     if (-not (Test-Path $src)) {
-        Write-Warning "Skipping $f -- not found in $PSScriptRoot"
+        Write-Warning "Skipping $f -- not found in $SrcDir"
         continue
     }
     Copy-Item -Path $src -Destination (Join-Path $drive $f) -Force
