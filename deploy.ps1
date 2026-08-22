@@ -48,7 +48,8 @@ $RequiredLibs = @(
     "adafruit_display_text",
     "adafruit_requests",
     "adafruit_connection_manager",
-    "adafruit_ntp"
+    "adafruit_ntp",
+    "adafruit_minimqtt"
 )
 
 $vol = Get-Volume -ErrorAction SilentlyContinue | Where-Object { $_.FileSystemLabel -eq "CIRCUITPY" }

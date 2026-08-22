@@ -8,6 +8,13 @@ HA_TOKEN = "your_long_lived_access_token"
 HA_REPORT_INTERVAL = 300          # seconds between HA push reports
 HA_FETCH_INTERVAL = 300           # seconds between HA data pulls
 
+# MQTT (status push to Home Assistant via MQTT discovery -- replaces the old
+# REST push; blank MQTT_HOST disables the push entirely)
+MQTT_HOST = "homeassistant.local"  # bare hostname or IP -- no "http://", no port
+MQTT_PORT = 1883
+MQTT_USERNAME = ""                 # blank = connect anonymously
+MQTT_PASSWORD = ""
+
 # Device identity (used in HA entity IDs and friendly names)
 DEVICE_NAME = "living_room_clock"
 

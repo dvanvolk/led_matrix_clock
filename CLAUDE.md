@@ -39,7 +39,7 @@ These are easy to get subtly wrong by "helpfully" simplifying, so they're called
 - **Every failure mode degrades gracefully and locally** rather than blocking the clock: no WiFi/HA → HA-dependent modes are silently skipped, core clock and indoor-sensor modes keep working. See the Graceful Degradation table in the requirements doc for the specific behavior per failure (WiFi down, RTC invalid, HA unreachable, AHT20/BH1750 read failure, NTP failure).
 - **Brightness is a smoothed function of lux**, not a hard threshold switch — steps between `BRIGHTNESS_MIN`/`MID`/`MAX` should not jump abruptly. Sample BH1750 every display update cycle; on a read failure, hold the last known brightness rather than erroring.
 - **Display modes are config-driven**, not hardcoded: `MODE_ORDER` and per-mode dwell times in `settings.toml` control what cycles and for how long. Adding/reordering modes should be a config change where possible, not a code change.
-- **HA entities are auto-created on first POST** — no HA-side YAML needed. Entity IDs incorporate `DEVICE_NAME` so multiple clock units on the same HA instance don't collide.
+- **HA status entities are pushed via MQTT discovery, not REST POST** — auto-created on first publish, no HA-side YAML needed, and grouped under one HA device card (shared `device` block keyed on the slugified `DEVICE_NAME`). Entity IDs incorporate `DEVICE_NAME` so multiple clock units on the same HA instance don't collide. Outdoor data is still *pulled* via REST GET, unchanged.
 
 ## Out of scope (per requirements doc)
 

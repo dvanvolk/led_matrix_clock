@@ -56,6 +56,14 @@ class Config:
         self.ha_report_interval = _as_number(os.getenv("HA_REPORT_INTERVAL", 300), int)
         self.ha_fetch_interval = _as_number(os.getenv("HA_FETCH_INTERVAL", 300), int)
 
+        # MQTT (status push to Home Assistant via MQTT discovery -- replaces
+        # the old REST POST push; HA_REPORT_INTERVAL above still controls how
+        # often these publish)
+        self.mqtt_host = os.getenv("MQTT_HOST", "")
+        self.mqtt_port = _as_number(os.getenv("MQTT_PORT", 1883), int)
+        self.mqtt_username = os.getenv("MQTT_USERNAME", "")
+        self.mqtt_password = os.getenv("MQTT_PASSWORD", "")
+
         # Device identity
         self.device_name = os.getenv("DEVICE_NAME", "matrix_clock")
         self.friendly_device_name = _friendly_name(self.device_name)
@@ -111,6 +119,7 @@ class Config:
         # subsystem rather than retrying forever (confirmed behavior).
         self.wifi_configured = bool(self.wifi_ssid)
         self.ha_configured = bool(self.ha_host) and bool(self.ha_token)
+        self.mqtt_configured = bool(self.mqtt_host)
 
 
 def load():

@@ -44,9 +44,10 @@ bus — no address conflicts (DS3231 `0x68`, AHT20 `0x38`, BH1750 `0x23`).
   between the date, indoor temperature, and outdoor temperature (from Home
   Assistant) — an unavailable item (sensor down, HA unreachable) is skipped
   instead of stalling the rotation
-- Reports to Home Assistant on a configurable interval: DS3231 chip
-  temperature, BH1750 lux, last NTP sync time, WiFi RSSI, current display
-  mode — entities are auto-created on first POST, no HA YAML needed
+- Reports to Home Assistant on a configurable interval via MQTT discovery:
+  indoor temperature, indoor humidity, lux, and last NTP sync time — all
+  four show up grouped under one device card in HA, auto-created on first
+  publish, no HA YAML needed
 - Every failure mode (no WiFi, no HA, a dead sensor, a failed NTP sync)
   degrades gracefully instead of hanging or blanking the panel — see the
   degradation table in the requirements doc
@@ -72,6 +73,7 @@ matching your CircuitPython version and copy these into a `lib/` folder on
 - `adafruit_requests`
 - `adafruit_connection_manager`
 - `adafruit_ntp`
+- `adafruit_minimqtt`
 
 ### 3. Configure `settings.toml`
 
@@ -93,6 +95,19 @@ TIMEZONE = "EST5EDT,M3.2.0,M11.1.0"
 Leaving `WIFI_SSID` or `HA_HOST`/`HA_TOKEN` blank disables that subsystem
 permanently (logged once at boot) rather than retrying forever, so a
 clock-only, fully offline deployment is a supported configuration.
+
+Status is pushed to HA separately, via MQTT discovery rather than the REST
+API above — set `MQTT_HOST` (a bare hostname or IP, e.g. your Mosquitto
+broker, *not* a URL) and, if your broker requires it, `MQTT_USERNAME` /
+`MQTT_PASSWORD` (`MQTT_PORT` defaults to 1883, no TLS). Leaving `MQTT_HOST`
+blank disables the push the same way blank `HA_HOST`/`HA_TOKEN` does.
+
+> **Migrating from an older REST-push version of this clock?** The old REST
+> `POST`-created entities (`sensor.{device_name}_indoor_temperature`, etc.)
+> have no `unique_id`, so they aren't in HA's entity registry and switching
+> to MQTT discovery creates *new*, device-grouped entities alongside them
+> rather than replacing them in place. Delete the old orphaned entities
+> yourself in HA (Settings → Devices & Services → Entities) after upgrading.
 
 Every other tunable (bottom-line dwell times, colors, brightness thresholds,
 report intervals) lives in the same file — see the file's comments or the

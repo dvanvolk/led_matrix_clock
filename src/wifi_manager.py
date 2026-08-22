@@ -88,18 +88,25 @@ def disconnect():
 
 class _Session:
     """Yielded by session(): .connected is True if WiFi came up; .requests is
-    an adafruit_requests.Session when connected, else None."""
+    an adafruit_requests.Session when connected, else None. .pool and
+    .ssl_context expose the same socket pool / SSL context adafruit_requests
+    is built from, for callers (e.g. ha_client's MQTT publish) that need a
+    raw socket pool instead of a requests-style session."""
 
     def __init__(self, cfg):
         self._cfg = cfg
         self.connected = False
         self.requests = None
+        self.pool = None
+        self.ssl_context = None
 
     def __enter__(self):
         self.connected = connect(self._cfg)
         if self.connected:
             _get_pool()
             self.requests = adafruit_requests.Session(_pool, _ssl_context)
+            self.pool = _pool
+            self.ssl_context = _ssl_context
         return self
 
     def __exit__(self, exc_type, exc, tb):

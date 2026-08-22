@@ -42,7 +42,8 @@ Matrix Portal M4
 
 - **CircuitPython** (latest stable release)
 - Libraries: `adafruit_matrixportal`, `adafruit_ds3231`, `adafruit_ahtx0`,
-  `adafruit_bh1750`, `adafruit_display_text`, `adafruit_requests`
+  `adafruit_bh1750`, `adafruit_display_text`, `adafruit_requests`,
+  `adafruit_connection_manager`, `adafruit_ntp`, `adafruit_minimqtt`
 
 ---
 
@@ -88,7 +89,7 @@ Matrix Portal M4
 | Outdoor temperature | `sensor.outdoor_temperature` |
 | Outdoor weather conditions | `sensor.outdoor_conditions` |
 
-### Data pushed to HA (on configurable interval)
+### Data pushed to HA (on configurable interval, via MQTT discovery)
 
 | Data | HA Entity (auto-created) |
 |---|---|
@@ -97,7 +98,20 @@ Matrix Portal M4
 | BH1750 lux reading | `sensor.{device_name}_lux` |
 | Last NTP sync timestamp | `sensor.{device_name}_last_ntp_sync` |
 
-- Entities are created automatically on first POST — no HA YAML configuration needed
+- Pushed via MQTT discovery (`MQTT_HOST`/`MQTT_PORT`/`MQTT_USERNAME`/`MQTT_PASSWORD`
+  in `settings.toml`), not REST — connects, publishes, disconnects once per
+  `HA_REPORT_INTERVAL`, matching the opportunistic-WiFi pattern used elsewhere
+- All four entities share one `device` block (keyed on the slugified device
+  name), so they're grouped under a single device card in HA instead of
+  showing up as bare, ungrouped entities
+- Discovery config and state are (re)published every report cycle and
+  retained on the broker — self-healing if the entity is deleted in HA or
+  the broker restarts, no bespoke "publish once" bookkeeping
+- Each entity's discovery config sets `expire_after` to 3× `HA_REPORT_INTERVAL`,
+  so HA shows the entity as Unavailable after ~3 missed cycles instead of
+  holding a stale value forever
+- Blank `MQTT_HOST` disables the push entirely (same pattern as blank
+  `HA_HOST`/`HA_TOKEN` disabling the outdoor fetch)
 - Device name set in `settings.toml` so multiple clocks post to separate entities
 - Friendly names derived from device name (e.g. `living_room_clock` → `Living room clock ...`)
 
@@ -163,6 +177,13 @@ HA_TOKEN = "your_long_lived_access_token"
 HA_REPORT_INTERVAL = 300          # seconds between HA push reports
 HA_FETCH_INTERVAL = 300           # seconds between HA data pulls
 
+# MQTT (status push to Home Assistant via MQTT discovery -- replaces the old
+# REST push; blank MQTT_HOST disables the push entirely)
+MQTT_HOST = "homeassistant.local"  # bare hostname or IP -- no "http://", no port
+MQTT_PORT = 1883
+MQTT_USERNAME = ""                 # blank = connect anonymously
+MQTT_PASSWORD = ""
+
 # Device identity (used in HA entity IDs and friendly names)
 DEVICE_NAME = "living_room_clock"
 
@@ -215,6 +236,7 @@ HA_OUTDOOR_CONDITIONS_ENTITY = "sensor.outdoor_conditions"
 | WiFi unavailable on boot | Skip NTP; show `----` until DS3231 valid or WiFi recovers |
 | DS3231 invalid + no WiFi | Display `----`; retry NTP every 60 seconds |
 | HA unreachable | Skip outdoor mode; continue local sensor modes |
+| MQTT unreachable/unconfigured | Skip HA status push; continue local sensor modes and REST outdoor fetch |
 | AHT20 read failure | Skip indoor mode; log error to serial |
 | BH1750 read failure | Hold last known brightness level |
 | NTP sync failure | Retain DS3231 time; retry at next daily interval |
@@ -235,6 +257,5 @@ HA_OUTDOOR_CONDITIONS_ENTITY = "sensor.outdoor_conditions"
 ## Future Considerations
 
 - 3D printed enclosure (printer expected by end of year)
-- MQTT discovery for cleaner Home Assistant device registration
 - Additional display modes (sports scores, calendar events, energy usage)
 - Second unit with different `DEVICE_NAME` for another room

@@ -76,14 +76,16 @@ def _boot(cfg, renderer, rtc_mgr):
 def main():
     log("code: ==== Matrix Clock starting ====")
     cfg = config.load()
-    log("code: device_name={} wifi_configured={} ha_configured={} timezone={}".format(
-        cfg.device_name, cfg.wifi_configured, cfg.ha_configured, cfg.timezone
+    log("code: device_name={} wifi_configured={} ha_configured={} mqtt_configured={} timezone={}".format(
+        cfg.device_name, cfg.wifi_configured, cfg.ha_configured, cfg.mqtt_configured, cfg.timezone
     ))
     log("code: mode_order={}".format(cfg.mode_order))
     if not cfg.wifi_configured:
         log("code: WiFi not configured -- running clock-only, offline")
     if not cfg.ha_configured:
         log("code: Home Assistant not configured -- HA modes disabled")
+    if not cfg.mqtt_configured:
+        log("code: MQTT not configured -- HA status push disabled")
 
     i2c = board.I2C()
     display = display_modes.init_display()
@@ -187,7 +189,7 @@ def main():
                     else:
                         log("code: HA outdoor fetch skipped, WiFi connect failed")
 
-            if cfg.ha_configured and now - last_ha_report >= cfg.ha_report_interval:
+            if cfg.mqtt_configured and now - last_ha_report >= cfg.ha_report_interval:
                 last_ha_report = now
                 with wifi_manager.session(cfg) as sess:
                     if sess.connected:
@@ -195,7 +197,7 @@ def main():
                             current_indoor if current_indoor is not None else (None, None)
                         )
                         succeeded, attempted = ha_client.report_all(
-                            sess.requests,
+                            sess.pool,
                             cfg,
                             indoor_temp_c,
                             indoor_humidity_pct,
