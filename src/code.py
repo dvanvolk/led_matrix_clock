@@ -188,14 +188,16 @@ def main():
                 last_ha_report = now
                 with wifi_manager.session(cfg) as sess:
                     if sess.connected:
+                        indoor_temp_c, indoor_humidity_pct = (
+                            current_indoor if current_indoor is not None else (None, None)
+                        )
                         succeeded, attempted = ha_client.report_all(
                             sess.requests,
                             cfg,
-                            rtc_mgr.read_chip_temperature(),
+                            indoor_temp_c,
+                            indoor_humidity_pct,
                             current_lux,
                             last_ntp_sync_iso,
-                            sess.rssi(),
-                            bottom_item,
                         )
                         log("code: HA status report sent ({}/{} ok)".format(
                             succeeded, attempted

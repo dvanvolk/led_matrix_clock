@@ -50,6 +50,15 @@ def _fmt_indoor_temp(temperature_c, unit_f):
     return "{:.1f}C".format(temperature_c)
 
 
+def _fmt_outdoor_temp(temp):
+    if temp is None:
+        return "--"
+    try:
+        return "{:.1f}F".format(float(temp))
+    except (TypeError, ValueError):
+        return "--"
+
+
 def init_display(bit_depth=4):
     matrix = Matrix(width=WIDTH, height=HEIGHT, bit_depth=bit_depth)
     return matrix.display
@@ -248,7 +257,7 @@ class Renderer:
         elif bottom_item == "outdoor":
             outdoor = outdoor or {}
             temp = outdoor.get("temperature")
-            self._set_text(self.bottom_label, temp if temp is not None else "--")
+            self._set_text(self.bottom_label, _fmt_outdoor_temp(temp))
 
     def _set_text(self, label, text):
         if label.text != text:

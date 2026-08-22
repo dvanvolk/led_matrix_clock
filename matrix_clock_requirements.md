@@ -92,11 +92,10 @@ Matrix Portal M4
 
 | Data | HA Entity (auto-created) |
 |---|---|
-| DS3231 chip temperature | `sensor.{device_name}_rtc_temperature` |
+| AHT20 indoor temperature | `sensor.{device_name}_indoor_temperature` |
+| AHT20 indoor humidity | `sensor.{device_name}_indoor_humidity` |
 | BH1750 lux reading | `sensor.{device_name}_lux` |
 | Last NTP sync timestamp | `sensor.{device_name}_last_ntp_sync` |
-| WiFi signal strength (RSSI) | `sensor.{device_name}_wifi_rssi` |
-| Current display mode | `sensor.{device_name}_display_mode` |
 
 - Entities are created automatically on first POST — no HA YAML configuration needed
 - Device name set in `settings.toml` so multiple clocks post to separate entities

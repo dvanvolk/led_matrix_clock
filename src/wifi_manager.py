@@ -110,7 +110,8 @@ class _Session:
         """WiFi signal strength -- only readable while still connected."""
         try:
             return _get_esp().rssi
-        except (OSError, RuntimeError, AttributeError):
+        except (OSError, RuntimeError, AttributeError) as e:
+            log("wifi: rssi read failed: {}".format(e))
             return None
 
 
