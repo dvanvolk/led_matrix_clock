@@ -73,7 +73,7 @@ def connect(cfg):
         log("wifi: connected to {}, ip={}".format(cfg.wifi_ssid, esp.pretty_ip(esp.ip_address)))
         return True
     except (ConnectionError, OSError, RuntimeError) as e:
-        log("wifi: connect failed:", e)
+        log("wifi: connect failed: {}".format(e))
         return False
 
 

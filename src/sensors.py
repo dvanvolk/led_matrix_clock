@@ -19,12 +19,12 @@ class SensorHub:
         try:
             self._aht20 = adafruit_ahtx0.AHTx0(i2c)
         except (OSError, ValueError) as e:
-            log("sensors: AHT20 not found, indoor mode disabled:", e)
+            log("sensors: AHT20 not found, indoor mode disabled: {}".format(e))
             self._aht20 = None
         try:
             self._bh1750 = adafruit_bh1750.BH1750(i2c)
         except (OSError, ValueError) as e:
-            log("sensors: BH1750 not found, brightness will hold default:", e)
+            log("sensors: BH1750 not found, brightness will hold default: {}".format(e))
             self._bh1750 = None
         self._indoor_ok = self._aht20 is not None
         self._lux_ok = self._bh1750 is not None
@@ -57,7 +57,7 @@ class SensorHub:
             return reading
         except OSError as e:
             if self._indoor_ok:
-                log("sensors: AHT20 read failed:", e)
+                log("sensors: AHT20 read failed: {}".format(e))
                 self._indoor_ok = False
             self._indoor_io_error = True
             return None
@@ -77,7 +77,7 @@ class SensorHub:
             return lux
         except OSError as e:
             if self._lux_ok:
-                log("sensors: BH1750 read failed:", e)
+                log("sensors: BH1750 read failed: {}".format(e))
                 self._lux_ok = False
             self._lux_io_error = True
             return None

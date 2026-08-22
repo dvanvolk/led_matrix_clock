@@ -83,7 +83,6 @@ class ModeManager:
     def _advance(self, now):
         self._index = (self._index + 1) % len(self._modes)
         self._mode_start = now
-        log("display_modes: switched to mode:", self.current_mode())
 
 
 class BottomRotator:
@@ -136,6 +135,7 @@ class BottomRotator:
             if self._data_available(self.current_item()):
                 break
         self._item_start = now
+        log("display_modes: bottom line switched to: {}".format(self.current_item()))
 
 
 def _scale_color(color, factor):

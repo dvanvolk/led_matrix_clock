@@ -24,6 +24,7 @@ SENSOR_SAMPLE_INTERVAL = 1.0  # BH1750/AHT20 sampled on their own ~1s timer,
 BOOT_RETRY_INTERVAL = 60
 MAIN_LOOP_INTERVAL = 0.5
 I2C_RECOVERY_COOLDOWN = 5.0  # don't re-attempt bus recovery more than this often
+LUX_LOG_INTERVAL = 60  # throttle lux/brightness logging so it doesn't flood serial
 
 
 def _iso(utc_struct_time):
@@ -66,9 +67,9 @@ def _boot(cfg, renderer, rtc_mgr):
                         rtc_mgr.write_utc(utc)
                         log("code: NTP sync ok, RTC updated")
                         return utc
-                    log("code: NTP sync failed, retrying in", BOOT_RETRY_INTERVAL, "s")
+                    log("code: NTP sync failed, retrying in {} s".format(BOOT_RETRY_INTERVAL))
                 else:
-                    log("code: WiFi connect failed, retrying in", BOOT_RETRY_INTERVAL, "s")
+                    log("code: WiFi connect failed, retrying in {} s".format(BOOT_RETRY_INTERVAL))
         time.sleep(BOOT_RETRY_INTERVAL)
 
 
@@ -78,7 +79,7 @@ def main():
     log("code: device_name={} wifi_configured={} ha_configured={} timezone={}".format(
         cfg.device_name, cfg.wifi_configured, cfg.ha_configured, cfg.timezone
     ))
-    log("code: mode_order=", cfg.mode_order)
+    log("code: mode_order={}".format(cfg.mode_order))
     if not cfg.wifi_configured:
         log("code: WiFi not configured -- running clock-only, offline")
     if not cfg.ha_configured:
@@ -107,6 +108,7 @@ def main():
     outdoor_cache = None
     last_utc = boot_sync_utc
     last_i2c_recovery = -I2C_RECOVERY_COOLDOWN
+    last_lux_log = -LUX_LOG_INTERVAL
 
     log("code: entering main loop")
     while True:
@@ -145,6 +147,10 @@ def main():
                 current_brightness = brightness.smooth(current_brightness, target)
                 renderer.set_brightness(current_brightness)
 
+                if now - last_lux_log >= LUX_LOG_INTERVAL:
+                    last_lux_log = now
+                    log("code: lux={:.1f} brightness={:.2f}".format(current_lux, current_brightness))
+
             bottom_mgr.update_availability(
                 indoor_available=current_indoor is not None,
                 outdoor_available=_has_outdoor_data(outdoor_cache),
@@ -174,7 +180,7 @@ def main():
                 with wifi_manager.session(cfg) as sess:
                     if sess.connected:
                         outdoor_cache = ha_client.fetch_outdoor(sess.requests, cfg)
-                        log("code: HA outdoor fetch done:", outdoor_cache)
+                        log("code: HA outdoor fetch done: {}".format(outdoor_cache))
                     else:
                         log("code: HA outdoor fetch skipped, WiFi connect failed")
 
@@ -198,7 +204,7 @@ def main():
                         log("code: HA status report skipped, WiFi connect failed")
 
         except Exception as e:  # noqa: BLE001 -- a transient fault must never blank the panel
-            log("code: main loop error:", e)
+            log("code: main loop error: {}".format(e))
 
         time.sleep(MAIN_LOOP_INTERVAL)
 

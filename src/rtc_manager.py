@@ -18,7 +18,7 @@ class RTCManager:
         try:
             self._ds3231 = adafruit_ds3231.DS3231(i2c)
         except (OSError, ValueError) as e:
-            log("rtc_manager: DS3231 not found, running without RTC:", e)
+            log("rtc_manager: DS3231 not found, running without RTC: {}".format(e))
             self._ds3231 = None
 
     def rebind(self, i2c):
@@ -53,7 +53,7 @@ class RTCManager:
             return utc
         except OSError as e:
             if not self.io_error:
-                log("rtc_manager: DS3231 read failed:", e)
+                log("rtc_manager: DS3231 read failed: {}".format(e))
             self.io_error = True
             return None
 
