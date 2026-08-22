@@ -94,6 +94,7 @@ class Config:
         # Adaptive brightness
         self.brightness_high_lux = _as_number(os.getenv("BRIGHTNESS_HIGH_LUX", 200), float)
         self.brightness_low_lux = _as_number(os.getenv("BRIGHTNESS_LOW_LUX", 10), float)
+        self.brightness_hysteresis_lux = _as_number(os.getenv("BRIGHTNESS_HYSTERESIS_LUX", 20), float)
         self.brightness_max = _as_number(os.getenv("BRIGHTNESS_MAX", 1.0), float)
         self.brightness_mid = _as_number(os.getenv("BRIGHTNESS_MID", 0.4), float)
         self.brightness_min = _as_number(os.getenv("BRIGHTNESS_MIN", 0.05), float)

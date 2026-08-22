@@ -98,6 +98,7 @@ def main():
     mode_mgr = display_modes.ModeManager(cfg)
     bottom_mgr = display_modes.BottomRotator(cfg)
     current_brightness = cfg.brightness_mid
+    current_brightness_zone = "mid"
     current_lux = None
     current_indoor = None
     last_sensor_sample = -SENSOR_SAMPLE_INTERVAL
@@ -143,7 +144,9 @@ def main():
                 sensor_hub.rebind(i2c)
 
             if current_lux is not None:
-                target = brightness.target_level(current_lux, cfg)
+                target, current_brightness_zone = brightness.target_level(
+                    current_lux, cfg, current_brightness_zone
+                )
                 current_brightness = brightness.smooth(current_brightness, target)
                 renderer.set_brightness(current_brightness)
 

@@ -45,6 +45,10 @@ COLOR_OUTDOOR = "0x00FF88"        # green
 # Adaptive brightness thresholds (lux)
 BRIGHTNESS_HIGH_LUX = 200
 BRIGHTNESS_LOW_LUX = 10
+# Hysteresis band (lux) -- once at MAX/MIN, lux must cross back past its
+# threshold by this much before the zone releases, so hovering right at a
+# threshold doesn't flicker the brightness target every sample.
+BRIGHTNESS_HYSTERESIS_LUX = 20
 
 # Brightness levels (0.0 – 1.0)
 BRIGHTNESS_MAX = 1.0

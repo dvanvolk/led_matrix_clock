@@ -115,6 +115,10 @@ Matrix Portal M4
 | Dark room | < `BRIGHTNESS_LOW_LUX` | `BRIGHTNESS_MIN` |
 
 - Brightness steps smoothly — no sudden jumps between levels
+- Lux-to-zone mapping has hysteresis: once at MAX or MIN, lux must cross back
+  past `BRIGHTNESS_HIGH_LUX`/`BRIGHTNESS_LOW_LUX` by `BRIGHTNESS_HYSTERESIS_LUX`
+  before the zone releases back toward MID, so lux hovering right at a
+  threshold doesn't flicker the brightness target every sample
 - All thresholds and levels are configurable
 - Minimum brightness still readable from across the room, not blinding in the dark
 
@@ -190,6 +194,7 @@ COLOR_OUTDOOR = "0x00FF88"        # green
 # Adaptive brightness thresholds (lux)
 BRIGHTNESS_HIGH_LUX = 200
 BRIGHTNESS_LOW_LUX = 10
+BRIGHTNESS_HYSTERESIS_LUX = 20    # zone-release margin, see Adaptive Brightness
 
 # Brightness levels (0.0 – 1.0)
 BRIGHTNESS_MAX = 1.0
