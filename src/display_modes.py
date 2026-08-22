@@ -182,23 +182,18 @@ class Renderer:
             self._active_mode = "__placeholder__"
 
     def _configure_bottom_label(self, item):
-        # date: centered, 8px. indoor/outdoor temp: left-aligned, 16px --
-        # left-aligned since these values' text length varies.
+        # All three items share the date's 8px size and centered position --
+        # 16px (scale=2) was tall enough to visually overlap the time label
+        # above it.
+        self.bottom_label.scale = 1
+        self.bottom_label.anchor_point = (0.5, 1.0)
+        self.bottom_label.anchored_position = (WIDTH // 2, HEIGHT)
         if item == "date":
-            self.bottom_label.scale = 1
             self.bottom_label.color = self._cfg.color_date
-            self.bottom_label.anchor_point = (0.5, 1.0)
-            self.bottom_label.anchored_position = (WIDTH // 2, HEIGHT)
         elif item == "indoor":
-            self.bottom_label.scale = 2
             self.bottom_label.color = self._cfg.color_temp
-            self.bottom_label.anchor_point = (0.0, 1.0)
-            self.bottom_label.anchored_position = (0, HEIGHT)
         elif item == "outdoor":
-            self.bottom_label.scale = 2
             self.bottom_label.color = self._cfg.color_outdoor
-            self.bottom_label.anchor_point = (0.0, 1.0)
-            self.bottom_label.anchored_position = (0, HEIGHT)
 
     def render(self, mode, bottom_item, local_time, indoor, outdoor):
         if self._active_mode != mode:
