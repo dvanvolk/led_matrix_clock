@@ -1,9 +1,10 @@
 # Matrix Portal RGB Clock
 
 A room-facing RGB LED matrix clock built on the Adafruit Matrix Portal M4,
-running CircuitPython. Displays time, date, indoor and outdoor environment
-data, and scrolling messages; brightness adapts automatically to ambient
-light; reports status to and pulls outdoor weather from Home Assistant.
+running CircuitPython. Displays the time with a rotating bottom line (date,
+indoor temperature, outdoor temperature); brightness adapts automatically to
+ambient light; reports status to and pulls outdoor weather from Home
+Assistant.
 
 Full behavioral spec: [`matrix_clock_requirements.md`](matrix_clock_requirements.md).
 Guidance for AI coding assistants working in this repo: [`CLAUDE.md`](CLAUDE.md).
@@ -39,8 +40,10 @@ bus — no address conflicts (DS3231 `0x68`, AHT20 `0x38`, BH1750 `0x23`).
   disconnects immediately after each operation
 - Adaptive brightness from a BH1750 ambient light sensor, stepped smoothly
   rather than snapping between levels
-- Five cycling display modes: Clock, Clock + Date, Indoor Environment,
-  Outdoor Weather (from Home Assistant), and a scrolling message
+- One always-on-time display: time on top, with a bottom line that rotates
+  between the date, indoor temperature, and outdoor temperature (from Home
+  Assistant) — an unavailable item (sensor down, HA unreachable) is skipped
+  instead of stalling the rotation
 - Reports to Home Assistant on a configurable interval: DS3231 chip
   temperature, BH1750 lux, last NTP sync time, WiFi RSSI, current display
   mode — entities are auto-created on first POST, no HA YAML needed
@@ -91,7 +94,7 @@ Leaving `WIFI_SSID` or `HA_HOST`/`HA_TOKEN` blank disables that subsystem
 permanently (logged once at boot) rather than retrying forever, so a
 clock-only, fully offline deployment is a supported configuration.
 
-Every other tunable (mode order/dwell times, colors, brightness thresholds,
+Every other tunable (bottom-line dwell times, colors, brightness thresholds,
 report intervals) lives in the same file — see the file's comments or the
 requirements doc for the full schema.
 
@@ -130,14 +133,12 @@ retries the whole list on the next daily cycle.
 
 ## Known deviations / limitations
 
-- **Clock mode uses 16px text, not the spec's literal 32px.** The built-in
+- **Time uses 16px text, not the spec's literal 32px.** The built-in
   `terminalio.FONT` is a fixed 6px-wide monospace glyph; at the scale needed
   to hit 32px tall, even a 3-character string overflows the 64px-wide panel.
   Scale 2 (16px) is the largest that fits a full "H:MM" string without
   clipping. A custom narrow-glyph bitmap font would be needed to hit 32px for
   real — noted as a deferred option in `display_modes.py`.
-- **Scroll mode shows only the static `SCROLL_MESSAGE`** from `settings.toml`
-  in this pass — there's no HA-pushed scroll message mechanism yet.
 - **POSIX TZ parsing supports only the `Mm.n.d` transition rule form**
   (covers all standard US/EU zones, including all four examples in
   `settings.toml`), not the legacy Julian-day (`Jn`/`n`) forms.

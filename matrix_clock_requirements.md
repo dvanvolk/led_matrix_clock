@@ -25,7 +25,7 @@ Integrates with Home Assistant for data exchange.
 | **Total** | | **$116.10** | |
 
 ### I2C Sensor Chain
-
+ 
 All three sensors share the same I2C bus via STEMMA QT daisy-chain.
 No address conflicts:
 
@@ -123,36 +123,24 @@ Matrix Portal M4
 
 ## Display Modes
 
-The panel cycles through enabled modes automatically.
-Dwell time per mode is individually configurable.
+There is a single top-level mode, Clock, that is always shown (`MODE_ORDER`
+stays config-driven — see below — in case more top-level modes are added
+later). The time is always visible; the bottom line internally rotates
+through three items on its own configurable dwell time per item, skipping
+any item whose backing data isn't currently available instead of stalling
+on it.
 
 ### Mode: Clock
-- **Content:** Current time only
-- **Layout:** 32px digits, centered, full panel height
-- **Color:** Configurable (default warm amber)
+- **Content:** Time on top row, always visible; bottom row rotates through:
+  - **Date** — date and day of week
+  - **Indoor temperature** — from the local AHT20 sensor
+  - **Outdoor temperature** — from a Home Assistant entity, skipped if
+    unreachable
+- **Layout:** 16px time, bottom row 8px for date / 16px for indoor and
+  outdoor temperature
+- **Color:** Time in primary color; date, indoor temp, and outdoor temp each
+  in their own configurable color
 - **Readable at:** 20ft+
-
-### Mode: Clock + Date
-- **Content:** Time on top row, date and day of week on bottom row
-- **Layout:** 16px time, 8px date
-- **Color:** Time in primary color, date in secondary color
-
-### Mode: Indoor Environment
-- **Content:** AHT20 temperature and humidity
-- **Layout:** 16px each, two rows
-- **Source:** Local AHT20 sensor reading
-- **Color:** Temperature in warm color, humidity in cool color
-
-### Mode: Outdoor Weather
-- **Content:** Outdoor temperature and conditions
-- **Layout:** 16px each, two rows
-- **Source:** Home Assistant entity values
-- **Color:** Configurable; mode skipped if HA data unavailable
-
-### Mode: Scroll
-- **Content:** Configurable static text, or message pushed from Home Assistant
-- **Layout:** 8px text scrolling left across full panel width
-- **Dwell:** Measured in scroll passes, not seconds
 
 ---
 
@@ -185,21 +173,20 @@ TIMEZONE = "EST5EDT,M3.2.0,M11.1.0"
 # NTP (comma-separated, tried in order; IPs preferred over hostnames)
 NTP_SERVERS = "216.239.35.0,216.239.35.4,129.6.15.28,pool.ntp.org"
 
-# Display modes — order and dwell time (seconds, except scroll)
-MODE_ORDER = "clock,clock_date,indoor,outdoor,scroll"
+# Display modes — top-level order/dwell (seconds). Only "clock" exists today.
+MODE_ORDER = "clock"
 MODE_DWELL_CLOCK = 30
-MODE_DWELL_CLOCK_DATE = 15
-MODE_DWELL_INDOOR = 10
-MODE_DWELL_OUTDOOR = 10
-MODE_DWELL_SCROLL = 2             # number of complete scroll passes
+
+# Dwell (seconds) for each item on the clock's rotating bottom line
+BOTTOM_DWELL_DATE = 15
+BOTTOM_DWELL_INDOOR = 10
+BOTTOM_DWELL_OUTDOOR = 10
 
 # Colors (RGB hex strings)
 COLOR_TIME = "0xFFAA00"           # warm amber
 COLOR_DATE = "0x004488"           # muted blue
 COLOR_TEMP = "0xFF4400"           # warm orange
-COLOR_HUMIDITY = "0x0088FF"       # cool blue
 COLOR_OUTDOOR = "0x00FF88"        # green
-COLOR_SCROLL = "0xFFFFFF"         # white
 
 # Adaptive brightness thresholds (lux)
 BRIGHTNESS_HIGH_LUX = 200
@@ -213,9 +200,6 @@ BRIGHTNESS_MIN = 0.05
 # Home Assistant entity IDs to pull outdoor data from
 HA_OUTDOOR_TEMP_ENTITY = "sensor.outdoor_temperature"
 HA_OUTDOOR_CONDITIONS_ENTITY = "sensor.outdoor_conditions"
-
-# Scroll message (overridden if HA pushes a message)
-SCROLL_MESSAGE = "Welcome!"
 ```
 
 ---

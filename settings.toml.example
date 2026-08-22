@@ -21,13 +21,16 @@ TIMEZONE = "EST5EDT,M3.2.0,M11.1.0"
 # NTP (comma-separated, tried in order; IPs preferred over hostnames)
 NTP_SERVERS = "216.239.35.0,216.239.35.4,129.6.15.28,pool.ntp.org"
 
-# Display modes — order and dwell time (seconds, except scroll)
-MODE_ORDER = "clock,clock_date,indoor,outdoor,scroll"
+# Display modes — top-level order/dwell (seconds). Only "clock" exists today
+# (time always shown, plus a rotating bottom line — see BOTTOM_DWELL_* below)
+# but this stays config-driven in case more top-level modes are added later.
+MODE_ORDER = "clock"
 MODE_DWELL_CLOCK = 30
-MODE_DWELL_CLOCK_DATE = 15
-MODE_DWELL_INDOOR = 10
-MODE_DWELL_OUTDOOR = 10
-MODE_DWELL_SCROLL = 2             # number of complete scroll passes
+
+# Dwell (seconds) for each item on the clock's rotating bottom line
+BOTTOM_DWELL_DATE = 15
+BOTTOM_DWELL_INDOOR = 10
+BOTTOM_DWELL_OUTDOOR = 10
 
 # Indoor temperature display unit -- true = Fahrenheit, false = Celsius
 # (AHT20 always reads Celsius in hardware; this only affects the display)
@@ -37,9 +40,7 @@ TEMP_UNIT_F = true
 COLOR_TIME = "0xFFAA00"           # warm amber
 COLOR_DATE = "0x004488"           # muted blue
 COLOR_TEMP = "0xFF4400"           # warm orange
-COLOR_HUMIDITY = "0x0088FF"       # cool blue
 COLOR_OUTDOOR = "0x00FF88"        # green
-COLOR_SCROLL = "0xFFFFFF"         # white
 
 # Adaptive brightness thresholds (lux)
 BRIGHTNESS_HIGH_LUX = 200
@@ -53,6 +54,3 @@ BRIGHTNESS_MIN = 0.05
 # Home Assistant entity IDs to pull outdoor data from
 HA_OUTDOOR_TEMP_ENTITY = "sensor.outdoor_temperature"
 HA_OUTDOOR_CONDITIONS_ENTITY = "sensor.outdoor_conditions"
-
-# Scroll message (static only in this pass — see CLAUDE.md / requirements doc)
-SCROLL_MESSAGE = "Welcome!"

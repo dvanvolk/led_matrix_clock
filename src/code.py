@@ -18,9 +18,9 @@ import wifi_manager
 
 NTP_RESYNC_INTERVAL = 24 * 60 * 60  # once a day, per the spec
 SENSOR_SAMPLE_INTERVAL = 1.0  # BH1750/AHT20 sampled on their own ~1s timer,
-# decoupled from the main loop's tick rate so fast scroll-animation ticks
-# (~0.05s) don't bottleneck on sensor conversion delay.
+# decoupled from the main loop's tick rate.
 BOOT_RETRY_INTERVAL = 60
+MAIN_LOOP_INTERVAL = 0.5
 
 
 def _iso(utc_struct_time):
@@ -92,6 +92,7 @@ def main():
     boot_sync_utc = _boot(cfg, renderer, rtc_mgr)
 
     mode_mgr = display_modes.ModeManager(cfg)
+    bottom_mgr = display_modes.BottomRotator(cfg)
     current_brightness = cfg.brightness_mid
     current_lux = None
     current_indoor = None
@@ -122,15 +123,15 @@ def main():
                 current_brightness = brightness.smooth(current_brightness, target)
                 display.brightness = current_brightness
 
-            mode_mgr.update_availability(
+            bottom_mgr.update_availability(
                 indoor_available=current_indoor is not None,
                 outdoor_available=_has_outdoor_data(outdoor_cache),
             )
             mode_mgr.tick(now)
+            bottom_mgr.tick(now)
             mode = mode_mgr.current_mode()
-            renderer.render(mode, local_time, current_indoor, outdoor_cache)
-            if mode == "scroll" and renderer.tick_scroll():
-                mode_mgr.note_scroll_pass()
+            bottom_item = bottom_mgr.current_item()
+            renderer.render(mode, bottom_item, local_time, current_indoor, outdoor_cache)
 
             if cfg.wifi_configured and now - last_ntp_sync >= NTP_RESYNC_INTERVAL:
                 last_ntp_sync = now
@@ -159,23 +160,25 @@ def main():
                 last_ha_report = now
                 with wifi_manager.session(cfg) as sess:
                     if sess.connected:
-                        ha_client.report_all(
+                        succeeded, attempted = ha_client.report_all(
                             sess.requests,
                             cfg,
                             rtc_mgr.read_chip_temperature(),
                             current_lux,
                             last_ntp_sync_iso,
                             sess.rssi(),
-                            mode,
+                            bottom_item,
                         )
-                        print("code: HA status report sent")
+                        print("code: HA status report sent ({}/{} ok)".format(
+                            succeeded, attempted
+                        ))
                     else:
                         print("code: HA status report skipped, WiFi connect failed")
 
         except Exception as e:  # noqa: BLE001 -- a transient fault must never blank the panel
             print("code: main loop error:", e)
 
-        time.sleep(mode_mgr.tick_interval())
+        time.sleep(MAIN_LOOP_INTERVAL)
 
 
 main()

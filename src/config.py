@@ -30,6 +30,20 @@ def _friendly_name(device_name):
     return text[:1].upper() + text[1:].lower() if text else text
 
 
+_SLUG_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_"
+
+
+def _slugify(device_name):
+    """HA's entity object_id must be lowercase alphanumeric/underscore --
+    sanitize so a DEVICE_NAME like "Living Room Clock" still produces a
+    valid entity_id instead of HA rejecting the POST with a 400.
+    (Not str.isalnum(): CircuitPython's built-in str doesn't implement it.)"""
+    chars = []
+    for ch in device_name.strip().lower():
+        chars.append(ch if ch in _SLUG_CHARS else "_")
+    return "".join(chars)
+
+
 class Config:
     def __init__(self):
         # WiFi
@@ -45,6 +59,7 @@ class Config:
         # Device identity
         self.device_name = os.getenv("DEVICE_NAME", "matrix_clock")
         self.friendly_device_name = _friendly_name(self.device_name)
+        self.device_name_slug = _slugify(self.device_name)
 
         # Timezone
         self.timezone = os.getenv("TIMEZONE", "UTC0")
@@ -56,19 +71,19 @@ class Config:
         self.mode_order = _split_csv(os.getenv("MODE_ORDER", "clock"))
         self.mode_dwell = {
             "clock": _as_number(os.getenv("MODE_DWELL_CLOCK", 30), int),
-            "clock_date": _as_number(os.getenv("MODE_DWELL_CLOCK_DATE", 15), int),
-            "indoor": _as_number(os.getenv("MODE_DWELL_INDOOR", 10), int),
-            "outdoor": _as_number(os.getenv("MODE_DWELL_OUTDOOR", 10), int),
-            "scroll": _as_number(os.getenv("MODE_DWELL_SCROLL", 2), int),
+        }
+        # Dwell for the clock's rotating bottom line (date / indoor / outdoor).
+        self.bottom_dwell = {
+            "date": _as_number(os.getenv("BOTTOM_DWELL_DATE", 15), int),
+            "indoor": _as_number(os.getenv("BOTTOM_DWELL_INDOOR", 10), int),
+            "outdoor": _as_number(os.getenv("BOTTOM_DWELL_OUTDOOR", 10), int),
         }
 
         # Colors (parsed to ints once, here)
         self.color_time = _parse_hex_color(os.getenv("COLOR_TIME", "0xFFAA00"))
         self.color_date = _parse_hex_color(os.getenv("COLOR_DATE", "0x004488"))
         self.color_temp = _parse_hex_color(os.getenv("COLOR_TEMP", "0xFF4400"))
-        self.color_humidity = _parse_hex_color(os.getenv("COLOR_HUMIDITY", "0x0088FF"))
         self.color_outdoor = _parse_hex_color(os.getenv("COLOR_OUTDOOR", "0x00FF88"))
-        self.color_scroll = _parse_hex_color(os.getenv("COLOR_SCROLL", "0xFFFFFF"))
 
         # Indoor temperature display unit -- AHT20 always reads Celsius in
         # hardware; this only controls the conversion applied at display time.
@@ -90,9 +105,6 @@ class Config:
         self.ha_outdoor_conditions_entity = os.getenv(
             "HA_OUTDOOR_CONDITIONS_ENTITY", "sensor.outdoor_conditions"
         )
-
-        # Scroll (static message only -- no HA-pushed scroll message in this pass)
-        self.scroll_message = os.getenv("SCROLL_MESSAGE", "Welcome!")
 
         # Derived availability flags -- missing config permanently disables the
         # subsystem rather than retrying forever (confirmed behavior).

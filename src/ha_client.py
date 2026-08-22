@@ -2,8 +2,9 @@
 
 GETs the two outdoor entities (independently -- partial data is shown if
 only one is reachable) and POSTs the five auto-created status entities.
-Entity IDs for pushed data are sensor.{DEVICE_NAME}_{suffix}; HA creates
-them on first POST, no YAML needed.
+Entity IDs for pushed data are sensor.{device_name_slug}_{suffix} (DEVICE_NAME
+slugified to a valid HA object_id); HA creates them on first POST, no YAML
+needed.
 """
 
 
@@ -36,7 +37,7 @@ def fetch_outdoor(requests_session, cfg):
 
 
 def post_state(requests_session, cfg, entity_suffix, state, friendly_suffix=None):
-    entity_id = "sensor.{}_{}".format(cfg.device_name, entity_suffix)
+    entity_id = "sensor.{}_{}".format(cfg.device_name_slug, entity_suffix)
     url = "{}/api/states/{}".format(cfg.ha_host, entity_id)
     headers = {
         "Authorization": "Bearer {}".format(cfg.ha_token),
@@ -46,11 +47,20 @@ def post_state(requests_session, cfg, entity_suffix, state, friendly_suffix=None
     payload = {"state": state, "attributes": {"friendly_name": friendly_name}}
     try:
         response = requests_session.post(url, headers=headers, json=payload)
-        response.close()
-        return True
     except OSError as e:
         print("ha_client: POST {} failed: {}".format(entity_id, e))
         return False
+    try:
+        if response.status_code not in (200, 201):
+            print(
+                "ha_client: POST {} failed: HTTP {} {}".format(
+                    entity_id, response.status_code, response.text
+                )
+            )
+            return False
+        return True
+    finally:
+        response.close()
 
 
 def report_all(requests_session, cfg, rtc_temp_c, lux, last_ntp_sync_iso, rssi, mode):
@@ -61,6 +71,11 @@ def report_all(requests_session, cfg, rtc_temp_c, lux, last_ntp_sync_iso, rssi, 
         ("wifi_rssi", rssi, "WiFi RSSI"),
         ("display_mode", mode, "Display Mode"),
     )
+    attempted = 0
+    succeeded = 0
     for suffix, value, friendly_suffix in metrics:
         if value is not None:
-            post_state(requests_session, cfg, suffix, value, friendly_suffix)
+            attempted += 1
+            if post_state(requests_session, cfg, suffix, value, friendly_suffix):
+                succeeded += 1
+    return succeeded, attempted
