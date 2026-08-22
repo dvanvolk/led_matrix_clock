@@ -29,6 +29,10 @@ MODE_DWELL_INDOOR = 10
 MODE_DWELL_OUTDOOR = 10
 MODE_DWELL_SCROLL = 2             # number of complete scroll passes
 
+# Indoor temperature display unit -- true = Fahrenheit, false = Celsius
+# (AHT20 always reads Celsius in hardware; this only affects the display)
+TEMP_UNIT_F = true
+
 # Colors (RGB hex strings)
 COLOR_TIME = "0xFFAA00"           # warm amber
 COLOR_DATE = "0x004488"           # muted blue

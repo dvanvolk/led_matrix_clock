@@ -41,6 +41,20 @@ def _fmt_date(local_time):
     )
 
 
+def _fmt_indoor_temp(temperature_c, unit_f):
+    if unit_f:
+        return "{:.1f}F".format(temperature_c * 9.0 / 5.0 + 32.0)
+    return "{:.1f}C".format(temperature_c)
+
+
+def _fit_text(text, scale, max_width=WIDTH):
+    """Truncates text to whatever fits left-aligned at this scale, so an
+    HA-supplied string (weather conditions can be long, e.g.
+    "lightning-rainy") never overflows the panel edge."""
+    max_chars = max_width // (_GLYPH_WIDTH * scale)
+    return text[:max_chars]
+
+
 def init_display(bit_depth=4):
     matrix = Matrix(width=WIDTH, height=HEIGHT, bit_depth=bit_depth)
     return matrix.display
@@ -163,8 +177,12 @@ class Renderer:
         )
         self.outdoor_temp_label.anchor_point = (0.0, 0.0)
         self.outdoor_temp_label.anchored_position = (0, 0)
+        # scale=1 (not 2, like the temp row above): HA weather condition
+        # strings ("partlycloudy", "lightning-rainy", ...) run well past the
+        # ~5 chars that fit at scale=2 on this 64px-wide panel and would
+        # clip off the right edge.
         self.outdoor_conditions_label = Label(
-            terminalio.FONT, text="--", scale=2, color=cfg.color_outdoor
+            terminalio.FONT, text="--", scale=1, color=cfg.color_outdoor
         )
         self.outdoor_conditions_label.anchor_point = (0.0, 0.0)
         self.outdoor_conditions_label.anchored_position = (0, HEIGHT // 2)
@@ -217,15 +235,20 @@ class Renderer:
         elif mode == "indoor":
             if indoor is not None:
                 temperature_c, humidity_pct = indoor
-                self._set_text(self.indoor_temp_label, "{:.1f}C".format(temperature_c))
+                self._set_text(
+                    self.indoor_temp_label,
+                    _fmt_indoor_temp(temperature_c, self._cfg.temp_unit_f),
+                )
                 self._set_text(self.indoor_humidity_label, "{:.0f}%".format(humidity_pct))
         elif mode == "outdoor":
             outdoor = outdoor or {}
             temp = outdoor.get("temperature")
             conditions = outdoor.get("conditions")
             self._set_text(self.outdoor_temp_label, temp if temp is not None else "--")
+            conditions_text = conditions if conditions is not None else "--"
             self._set_text(
-                self.outdoor_conditions_label, conditions if conditions is not None else "--"
+                self.outdoor_conditions_label,
+                _fit_text(conditions_text, self.outdoor_conditions_label.scale),
             )
         elif mode == "scroll":
             pass  # advanced via tick_scroll(), not on every render call

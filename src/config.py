@@ -16,6 +16,14 @@ def _parse_hex_color(value):
     return int(value, 16)
 
 
+def _as_number(value, cast):
+    """CircuitPython's settings.toml parser can leave a value as a str when
+    the line has a trailing inline comment (a documented parser limitation)
+    instead of stripping it -- coerce defensively so callers always get the
+    numeric type they expect regardless of how the value was written."""
+    return cast(value) if isinstance(value, str) else value
+
+
 def _friendly_name(device_name):
     # str.capitalize() isn't implemented by CircuitPython's built-in str type.
     text = device_name.replace("_", " ").strip()
@@ -31,8 +39,8 @@ class Config:
         # Home Assistant
         self.ha_host = os.getenv("HA_HOST", "")
         self.ha_token = os.getenv("HA_TOKEN", "")
-        self.ha_report_interval = os.getenv("HA_REPORT_INTERVAL", 300)
-        self.ha_fetch_interval = os.getenv("HA_FETCH_INTERVAL", 300)
+        self.ha_report_interval = _as_number(os.getenv("HA_REPORT_INTERVAL", 300), int)
+        self.ha_fetch_interval = _as_number(os.getenv("HA_FETCH_INTERVAL", 300), int)
 
         # Device identity
         self.device_name = os.getenv("DEVICE_NAME", "matrix_clock")
@@ -47,11 +55,11 @@ class Config:
         # Display modes
         self.mode_order = _split_csv(os.getenv("MODE_ORDER", "clock"))
         self.mode_dwell = {
-            "clock": os.getenv("MODE_DWELL_CLOCK", 30),
-            "clock_date": os.getenv("MODE_DWELL_CLOCK_DATE", 15),
-            "indoor": os.getenv("MODE_DWELL_INDOOR", 10),
-            "outdoor": os.getenv("MODE_DWELL_OUTDOOR", 10),
-            "scroll": os.getenv("MODE_DWELL_SCROLL", 2),
+            "clock": _as_number(os.getenv("MODE_DWELL_CLOCK", 30), int),
+            "clock_date": _as_number(os.getenv("MODE_DWELL_CLOCK_DATE", 15), int),
+            "indoor": _as_number(os.getenv("MODE_DWELL_INDOOR", 10), int),
+            "outdoor": _as_number(os.getenv("MODE_DWELL_OUTDOOR", 10), int),
+            "scroll": _as_number(os.getenv("MODE_DWELL_SCROLL", 2), int),
         }
 
         # Colors (parsed to ints once, here)
@@ -62,12 +70,18 @@ class Config:
         self.color_outdoor = _parse_hex_color(os.getenv("COLOR_OUTDOOR", "0x00FF88"))
         self.color_scroll = _parse_hex_color(os.getenv("COLOR_SCROLL", "0xFFFFFF"))
 
+        # Indoor temperature display unit -- AHT20 always reads Celsius in
+        # hardware; this only controls the conversion applied at display time.
+        self.temp_unit_f = os.getenv("TEMP_UNIT_F", True)
+        if isinstance(self.temp_unit_f, str):
+            self.temp_unit_f = self.temp_unit_f.strip().lower() in ("1", "true", "yes")
+
         # Adaptive brightness
-        self.brightness_high_lux = os.getenv("BRIGHTNESS_HIGH_LUX", 200)
-        self.brightness_low_lux = os.getenv("BRIGHTNESS_LOW_LUX", 10)
-        self.brightness_max = os.getenv("BRIGHTNESS_MAX", 1.0)
-        self.brightness_mid = os.getenv("BRIGHTNESS_MID", 0.4)
-        self.brightness_min = os.getenv("BRIGHTNESS_MIN", 0.05)
+        self.brightness_high_lux = _as_number(os.getenv("BRIGHTNESS_HIGH_LUX", 200), float)
+        self.brightness_low_lux = _as_number(os.getenv("BRIGHTNESS_LOW_LUX", 10), float)
+        self.brightness_max = _as_number(os.getenv("BRIGHTNESS_MAX", 1.0), float)
+        self.brightness_mid = _as_number(os.getenv("BRIGHTNESS_MID", 0.4), float)
+        self.brightness_min = _as_number(os.getenv("BRIGHTNESS_MIN", 0.05), float)
 
         # Outdoor HA entities
         self.ha_outdoor_temp_entity = os.getenv(
