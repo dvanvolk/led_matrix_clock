@@ -131,6 +131,27 @@ conditions, both addressed here:
 sequence then retries the whole list every 60 seconds, and the main loop
 retries the whole list on the next daily cycle.
 
+## Hardware self-test
+
+`src/hw_selftest.py` is a standalone diagnostic that checks every 64×32 pixel
+lights correctly, all three I2C sensors (DS3231, AHT20, BH1750) respond, and
+WiFi/NTP are reachable. It's copied to `CIRCUITPY` by `deploy.ps1` like every
+other module, but it's never imported by `code.py` — it only runs when you
+invoke it yourself, since CircuitPython has no shell to run a script from:
+
+1. Open a serial console to the board (Mu, `tio`, `screen`, or PuTTY).
+2. Press Ctrl+C to stop the running `code.py` loop and drop to the `>>>` REPL.
+3. Run `import hw_selftest`. This runs the full suite once and prints a
+   `[PASS]`/`[FAIL]`/`[SKIP]` line per component, then a summary count.
+4. The matrix test cycles the whole panel through red/green/blue/white and
+   asks you to confirm (`y`/`n`) that every pixel lit evenly with none
+   dead or stuck.
+5. Press Ctrl+D (or reset the board) afterward to resume normal `code.py`
+   operation.
+
+WiFi/NTP checks are skipped (not failed) if `WIFI_SSID` is blank, matching
+the same "unconfigured subsystem" rule the main clock uses.
+
 ## Known deviations / limitations
 
 - **Time uses 16px text, not the spec's literal 32px.** The built-in

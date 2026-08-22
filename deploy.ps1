@@ -34,6 +34,7 @@ $ProjectFiles = @(
     "display_modes.py",
     "wifi_manager.py",
     "ha_client.py",
+    "hw_selftest.py",
     "settings.toml"
 )
 
