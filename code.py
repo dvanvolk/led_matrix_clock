@@ -70,7 +70,12 @@ def _boot(cfg, renderer, rtc_mgr):
 
 
 def main():
+    print("code: ==== Matrix Clock starting ====")
     cfg = config.load()
+    print("code: device_name={} wifi_configured={} ha_configured={} timezone={}".format(
+        cfg.device_name, cfg.wifi_configured, cfg.ha_configured, cfg.timezone
+    ))
+    print("code: mode_order=", cfg.mode_order)
     if not cfg.wifi_configured:
         print("code: WiFi not configured -- running clock-only, offline")
     if not cfg.ha_configured:
@@ -82,6 +87,7 @@ def main():
     rtc_mgr = rtc_manager.RTCManager(i2c)
     sensor_hub = sensors.SensorHub(i2c)
     tz_instance = tz.PosixTZ(cfg.timezone)
+    print("code: display/RTC/sensors/timezone initialized")
 
     boot_sync_utc = _boot(cfg, renderer, rtc_mgr)
 
@@ -96,6 +102,7 @@ def main():
     last_ha_report = -cfg.ha_report_interval
     outdoor_cache = None
 
+    print("code: entering main loop")
     while True:
         try:
             now = time.monotonic()
@@ -133,14 +140,20 @@ def main():
                         if synced is not None:
                             rtc_mgr.write_utc(synced)
                             last_ntp_sync_iso = _iso(synced)
+                            print("code: daily NTP resync ok, RTC updated")
                         else:
                             print("code: daily NTP resync failed, retrying next interval")
+                    else:
+                        print("code: daily NTP resync skipped, WiFi connect failed")
 
             if cfg.ha_configured and now - last_ha_fetch >= cfg.ha_fetch_interval:
                 last_ha_fetch = now
                 with wifi_manager.session(cfg) as sess:
                     if sess.connected:
                         outdoor_cache = ha_client.fetch_outdoor(sess.requests, cfg)
+                        print("code: HA outdoor fetch done:", outdoor_cache)
+                    else:
+                        print("code: HA outdoor fetch skipped, WiFi connect failed")
 
             if cfg.ha_configured and now - last_ha_report >= cfg.ha_report_interval:
                 last_ha_report = now
@@ -155,6 +168,9 @@ def main():
                             sess.rssi(),
                             mode,
                         )
+                        print("code: HA status report sent")
+                    else:
+                        print("code: HA status report skipped, WiFi connect failed")
 
         except Exception as e:  # noqa: BLE001 -- a transient fault must never blank the panel
             print("code: main loop error:", e)

@@ -17,7 +17,9 @@ def _parse_hex_color(value):
 
 
 def _friendly_name(device_name):
-    return device_name.replace("_", " ").strip().capitalize()
+    # str.capitalize() isn't implemented by CircuitPython's built-in str type.
+    text = device_name.replace("_", " ").strip()
+    return text[:1].upper() + text[1:].lower() if text else text
 
 
 class Config:

@@ -3,7 +3,7 @@
     Copies this project onto a connected Matrix Portal M4's MATRIXBOOT drive.
 
 .DESCRIPTION
-    Finds the MATRIXBOOT volume, copies code.py + every project module +
+    Finds the CIRCUITPY volume, copies code.py + every project module +
     settings.toml onto it, and (optionally) runs circup to install/update
     the required libraries into lib/ on the device.
 
@@ -46,12 +46,12 @@ $RequiredLibs = @(
     "adafruit_ntp"
 )
 
-$vol = Get-Volume -ErrorAction SilentlyContinue | Where-Object { $_.FileSystemLabel -eq "MATRIXBOOT" }
+$vol = Get-Volume -ErrorAction SilentlyContinue | Where-Object { $_.FileSystemLabel -eq "CIRCUITPY" }
 if (-not $vol) {
-    Write-Error "No MATRIXBOOT drive found. Plug in the Matrix Portal M4 (already running CircuitPython) and try again."
+    Write-Error "No CIRCUITPY drive found. Plug in the Matrix Portal M4 (already running CircuitPython) and try again. (If you see a MATRIXBOOT drive instead, the board is in UF2 bootloader mode -- tap reset once to boot into CircuitPython.)"
 }
 $drive = "$($vol.DriveLetter):"
-Write-Output "Found MATRIXBOOT at $drive"
+Write-Output "Found CIRCUITPY at $drive"
 
 $settingsPath = Join-Path $PSScriptRoot "settings.toml"
 $settingsContent = Get-Content $settingsPath -Raw

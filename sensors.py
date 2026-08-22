@@ -12,13 +12,24 @@ import adafruit_bh1750
 
 class SensorHub:
     def __init__(self, i2c):
-        self._aht20 = adafruit_ahtx0.AHTx0(i2c)
-        self._bh1750 = adafruit_bh1750.BH1750(i2c)
-        self._indoor_ok = True
-        self._lux_ok = True
+        try:
+            self._aht20 = adafruit_ahtx0.AHTx0(i2c)
+        except (OSError, ValueError) as e:
+            print("sensors: AHT20 not found, indoor mode disabled:", e)
+            self._aht20 = None
+        try:
+            self._bh1750 = adafruit_bh1750.BH1750(i2c)
+        except (OSError, ValueError) as e:
+            print("sensors: BH1750 not found, brightness will hold default:", e)
+            self._bh1750 = None
+        self._indoor_ok = self._aht20 is not None
+        self._lux_ok = self._bh1750 is not None
 
     def read_indoor(self):
-        """Returns (temperature_c, humidity_pct), or None on read failure."""
+        """Returns (temperature_c, humidity_pct), or None on read failure
+        or if the AHT20 wasn't found at startup."""
+        if self._aht20 is None:
+            return None
         try:
             reading = (self._aht20.temperature, self._aht20.relative_humidity)
             if not self._indoor_ok:
@@ -32,7 +43,10 @@ class SensorHub:
             return None
 
     def read_lux(self):
-        """Returns the current lux reading, or None on read failure."""
+        """Returns the current lux reading, or None on read failure or if
+        the BH1750 wasn't found at startup."""
+        if self._bh1750 is None:
+            return None
         try:
             lux = self._bh1750.lux
             if not self._lux_ok:

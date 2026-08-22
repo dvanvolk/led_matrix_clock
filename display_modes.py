@@ -103,6 +103,7 @@ class ModeManager:
                 break
         self._mode_start = now
         self._scroll_passes = 0
+        print("display_modes: switched to mode:", self.current_mode())
 
     def tick_interval(self):
         return 0.05 if self.current_mode() == "scroll" else 0.5
